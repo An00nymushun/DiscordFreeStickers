@@ -3696,7 +3696,7 @@ const {
     MessageQueue: ['enqueue', 'requests'],
     PendingReplyDispatcher: ['createPendingReply'],
     MessageCache: ['getMessage', 'getMessages'],
-    ChannelStore: ['getChannel'],
+    ChannelStore: ['getChannel', 'getDMFromUserId'],
     UserStore: ['getCurrentUser'],
     StickerStore: ['getStickerById'],
     StickerUtils: ['getStickerAssetUrl'],
@@ -3851,7 +3851,7 @@ return function() { return {
     getName: () => "DiscordFreeStickers",
     getShortName: () => "FreeStickers",
     getDescription: () => "Link stickers or upload animated stickers as gifs!",
-    getVersion: () => "1.0",
+    getVersion: () => "1.1",
     getAuthor: () => "An0",
 
     start: Start,
