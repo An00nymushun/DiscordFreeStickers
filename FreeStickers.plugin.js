@@ -3713,7 +3713,7 @@ const postAwaiters = new Map();
 
 const permissionsCache = new Map();
 function checkPermission(flag, user, channel) {
-    const key = `${flag}:${user}:${channel}`;
+    const key = `${flag}:${user.id}:${channel.id}`;
 
     let can = permissionsCache.get(key);
     if(can === undefined) {
@@ -3851,7 +3851,7 @@ return function() { return {
     getName: () => "DiscordFreeStickers",
     getShortName: () => "FreeStickers",
     getDescription: () => "Link stickers or upload animated stickers as gifs!",
-    getVersion: () => "1.1",
+    getVersion: () => "1.2",
     getAuthor: () => "An0",
 
     start: Start,
