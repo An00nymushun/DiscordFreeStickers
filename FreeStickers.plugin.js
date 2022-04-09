@@ -3137,7 +3137,7 @@ function preprocessGifFrame(buffer) {
 
 self.onmessage = async (msg) => {
     const [url, width, height] = msg.data;
-  
+
     const fetchResponse = await fetch(url);
     const animData = await fetchResponse.text();
 
@@ -3166,7 +3166,7 @@ self.onmessage = async (msg) => {
         transfer.push(frameObj.frame);
         frames.push(frameObj);
     }
-  
+
     self.postMessage(frames, transfer);
     //self.close();
 };
@@ -3612,14 +3612,14 @@ async function RenderApngGif(url) {
 
             ctx.clearRect(0, 0, apng.width, apng.height);
             ctx.drawImage(apngCanvas, 0, 0);
-            
+
             addGifFrame(gif, ctx, frame.delay);
         }
-        
+
         let renderPromise = new Promise(resolve => gif.on('finished', resolve));
-        
+
         gif.render();
-        
+
         return await renderPromise;
     }
     catch(e) { Utils.Error(e) }
@@ -3631,7 +3631,7 @@ async function RenderLottieGif(url) {
 
         const lottiePromise = new Promise(resolve => lottieWorker.onmessage = (msg) => resolve(msg.data));
         lottieWorker.postMessage([String(url), width, height]);
-        
+
         const gif = new GIF(gifOptions);
 
         const frames = await lottiePromise;
@@ -3643,9 +3643,9 @@ async function RenderLottieGif(url) {
         }
 
         const renderPromise = new Promise(resolve => gif.on('finished', resolve));
-        
+
         gif.render();
-        
+
         return await renderPromise;
     }
     catch(e) { Utils.Error(e) }
@@ -3671,7 +3671,14 @@ function swapEnqueueWithUploadAfterRender(renderPromise, message, sticker, callb
             MessageActions.deleteMessage(message.channelId, message.nonce, true);
             callback(result);
         });
-        FileUploader.upload(message.channelId, blob, 0, message, false, `${sticker.name}.gif`);
+        FileUploader.upload({
+            channelId: message.channelId,
+            file: blob,
+            draftType: 0,
+            message,
+            hasSpoiler: false,
+            filename: `${sticker.name}.gif`
+        });
     });
 }
 
@@ -3721,7 +3728,7 @@ function checkPermission(flag, user, channel) {
             setTimeout(() => permissionsCache.clear(), 10);
         }
 
-        can = PermissionEvaluator.can(flag, user, channel);
+        can = PermissionEvaluator.can({ permission: flag, user, context: channel });
         permissionsCache.set(key, can);
     }
 
@@ -3730,14 +3737,14 @@ function checkPermission(flag, user, channel) {
 
 BdApi.Patcher.instead('FreeStickers', StickerSendabilityModule, 'isSendableSticker', (thisObject, methodArguments, originalMethod) => {
     let stickerSendability = StickerSendabilityModule.getStickerSendability.apply(thisObject, methodArguments);
-    
+
     if(stickerSendability === StickerSendabilityModule.StickerSendability.SENDABLE) {
         return true;
     }
 
     if(stickerSendability !== StickerSendabilityModule.StickerSendability.NONSENDABLE) {
         const [sticker, user, channel] = methodArguments;
-        
+
         if(channel.type === 1/*DM*/ || channel.type === 3/*GROUP_DM*/) {
             return true;
         }
@@ -3759,6 +3766,7 @@ BdApi.Patcher.instead('FreeStickers', MessageQueue, 'enqueue', (thisObject, meth
 
     if(event.type === 0/*send*/) {
         let message = event.message;
+
         let stickerId = message.sticker_ids?.[0];
         if(stickerId !== undefined) {
             let sticker = StickerStore.getStickerById(stickerId);
@@ -3824,8 +3832,10 @@ BdApi.Patcher.after('FreeStickers', XhrClient, 'post', (thisObject, methodArgume
 });
 
 BdApi.Patcher.instead('FreeStickers', StickerHelpers, 'useFilteredStickerPackCategories', (thisObject, methodArguments, originalMethod) => {
+
     const currentUser = UserStore.getCurrentUser();
     const originalPremium = currentUser.premiumType;
+
     let result;
     if(originalPremium >= 2) {
         result = originalMethod.apply(thisObject, methodArguments);
