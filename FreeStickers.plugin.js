@@ -1,4 +1,11 @@
-//META{"name":"FreeStickers"}*//
+/**
+ * @name FreeStickers
+ * @version 1.2.1
+ * @description Link stickers or upload animated stickers as gifs!
+ * @author An0
+ * @source https://github.com/An00nymushun/DiscordFreeStickers
+ * @updateUrl https://raw.githubusercontent.com/An00nymushun/DiscordFreeStickers/main/FreeStickers.plugin.js
+ */
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Please note that all WASM parts run in web workers, thus they are separated from the DOM and the javascript context of the page. //
@@ -3103,7 +3110,7 @@ run();
         return Promise.resolve(Module);
     }
     else {
-        return new Promise(resolve => Module.onRuntimeInitialized = () => resolve(Module)); 
+        return new Promise(resolve => Module.onRuntimeInitialized = () => resolve(Module));
     }
 })();
 
@@ -3858,12 +3865,6 @@ function Stop() {
 }
 
 return function() { return {
-    getName: () => "DiscordFreeStickers",
-    getShortName: () => "FreeStickers",
-    getDescription: () => "Link stickers or upload animated stickers as gifs!",
-    getVersion: () => "1.2",
-    getAuthor: () => "An0",
-
     start: Start,
     stop: Stop
 }};
