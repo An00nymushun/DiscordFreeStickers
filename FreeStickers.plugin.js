@@ -1,6 +1,6 @@
 /**
  * @name FreeStickers
- * @version 1.2.1
+ * @version 1.3
  * @description Link stickers or upload animated stickers as gifs!
  * @author An0
  * @source https://github.com/An00nymushun/DiscordFreeStickers
@@ -3797,6 +3797,9 @@ BdApi.Patcher.instead('FreeStickers', MessageQueue, 'enqueue', (thisObject, meth
                     if(sticker.format_type === 1/*PNG*/) {
                         // getStickerAssetUrl doesn't support size 160 but the endpoint does
                         stickerUrl.searchParams.set('size', "160");
+						// As long as png is still supported it should give better quality, lossless webp doesn't seem to work well on the API
+						stickerUrl.pathname = stickerUrl.pathname.replace(/\.webp$/i, ".png")
+						
                         if(message.content === "") {
                             message.content = stickerUrl;
                         }
