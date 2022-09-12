@@ -1,6 +1,6 @@
 /**
  * @name FreeStickers
- * @version 1.3
+ * @version 1.3.1
  * @description Link stickers or upload animated stickers as gifs!
  * @author An0
  * @source https://github.com/An00nymushun/DiscordFreeStickers
@@ -3767,7 +3767,10 @@ BdApi.Patcher.instead('FreeStickers', StickerSendabilityModule, 'isSendableStick
     return false;
 });
 
-BdApi.Patcher.instead('FreeStickers', MessageQueue, 'enqueue', (thisObject, methodArguments, originalMethod) => {
+const original_enqueue = MessageQueue.enqueue;
+
+BdApi.Patcher.instead('FreeStickers', MessageQueue, 'enqueue',
+    (thisObject = MessageQueue, methodArguments, originalMethod = original_enqueue) => {
 
     const [ event, callback ] = methodArguments;
 
@@ -3841,7 +3844,10 @@ BdApi.Patcher.after('FreeStickers', XhrClient, 'post', (thisObject, methodArgume
     }
 });
 
-BdApi.Patcher.instead('FreeStickers', StickerHelpers, 'useFilteredStickerPackCategories', (thisObject, methodArguments, originalMethod) => {
+const original_useFilteredStickerPackCategories = StickerHelpers.useFilteredStickerPackCategories;
+
+BdApi.Patcher.instead('FreeStickers', StickerHelpers, 'useFilteredStickerPackCategories',
+    (thisObject = StickerHelpers, methodArguments, originalMethod = original_useFilteredStickerPackCategories) => {
 
     const currentUser = UserStore.getCurrentUser();
     const originalPremium = currentUser.premiumType;
