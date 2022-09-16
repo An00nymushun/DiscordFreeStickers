@@ -1,6 +1,6 @@
 /**
  * @name FreeStickers
- * @version 1.3.1
+ * @version 1.3.2
  * @description Link stickers or upload animated stickers as gifs!
  * @author An0
  * @source https://github.com/An00nymushun/DiscordFreeStickers
@@ -3498,7 +3498,7 @@ let nodeHttps;
 let nodeHttpsOptions;
 if(typeof(require) !== 'undefined') {
     nodeHttps = require('https');
-    nodeHttpsOptions = { agent: new nodeHttps.Agent({ keepAlive: true }), timeout: 120000 };
+    nodeHttpsOptions = { agent: nodeHttps.Agent && new nodeHttps.Agent({ keepAlive: true }), timeout: 120000 };
 }
 
 const DownloadFile =
