@@ -1,6 +1,6 @@
 /**
  * @name FreeStickers
- * @version 1.3.2
+ * @version 1.4.0
  * @description Link stickers or upload animated stickers as gifs!
  * @author An0
  * @source https://github.com/An00nymushun/DiscordFreeStickers
@@ -3512,12 +3512,14 @@ const DownloadFile =
         })
     })
     : (nodeHttps != null) ? (url) => { return new Promise((resolve, reject) => {
-        nodeHttps.get(String(url), nodeHttpsOptions, (response) => {
+        const request = nodeHttps.get(String(url), nodeHttpsOptions, (response) => {
             let data = [];
             response.on('data', (chunk) => data.push(chunk));
             response.on('end', () => resolve(Buffer.concat(data)));
             response.on('aborted', reject);
-        }).on('error', reject).on('timeout', function() { this.abort() });
+        })
+        request.on('error', reject);
+        request.on('timeout', function() { this.abort() });
     })}
     : (url) => new Promise((resolve, reject) => {
         let xhr = new XMLHttpRequest();
@@ -3664,8 +3666,9 @@ function swapEnqueueWithUploadAfterRender(renderPromise, message, sticker, callb
             const referencedMessage = MessageCache.getMessage(message.message_reference.channel_id, message.message_reference.message_id);
             const referencedChannel = ChannelStore.getChannel(message.message_reference.channel_id);
 
-            if(referencedMessage && referencedChannel) {
-                PendingReplyDispatcher.createPendingReply({
+            if (referencedMessage && referencedChannel) {
+                MessageDispatcher.dispatch({
+                    type: 'CREATE_PENDING_REPLY',
                     message: referencedMessage,
                     channel: referencedChannel,
                     shouldMention: message.allowed_mentions?.replied_user != false,
@@ -3689,7 +3692,6 @@ function swapEnqueueWithUploadAfterRender(renderPromise, message, sticker, callb
     });
 }
 
-
 function findModules(modules) {
     for (const [name, props] of Object.entries(modules)) {
         const module = BdApi.findModuleByProps(...props);
@@ -3702,26 +3704,53 @@ function findModules(modules) {
 
 
 const {
-    FileUploader, MessageActions, StickerSendabilityModule, MessageQueue, PendingReplyDispatcher, MessageCache, ChannelStore, UserStore, StickerStore, StickerUtils, XhrClient, StickerHelpers, PermissionEvaluator, WelcomeStickersStore
+    FileUploader, MessageActions, MessageQueue, MessageDispatcher, MessageCache, ChannelStore, UserStore, StickerStore, XhrClient, PermissionEvaluator
 } = findModules({
     FileUploader: ['upload', 'cancel', 'instantBatchUpload'],
     MessageActions: ['deleteMessage', 'sendClydeError'],
-    StickerSendabilityModule: ['isSendableSticker', 'getStickerSendability'],
     MessageQueue: ['enqueue', 'requests'],
-    PendingReplyDispatcher: ['createPendingReply'],
+    MessageDispatcher: ['dispatch', 'wait'],
     MessageCache: ['getMessage', 'getMessages'],
     ChannelStore: ['getChannel', 'getDMFromUserId'],
     UserStore: ['getCurrentUser'],
     StickerStore: ['getStickerById'],
-    StickerUtils: ['getStickerAssetUrl'],
     XhrClient: ['post', 'getXHR'],
-    StickerHelpers: ['useFilteredStickerPackCategories'],
-    PermissionEvaluator: ['can', 'getHighestRole', 'canEveryone'],
-    WelcomeStickersStore: ['WELCOME_STICKERS']
+    PermissionEvaluator: ['can', 'getHighestRole', 'canEveryone']
 });
 
+const functionToString = (() => {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.append(iframe);
+    const { toString } = iframe.contentWindow.Function;
+    iframe.remove();
+    return (f) => toString.call(f);
+})();
 
-const WelcomeStickerIds = new Set(WelcomeStickersStore.WELCOME_STICKERS.map(x => x.id));
+const StickerSendabilityModule = (() => {
+    const filter = BdApi.Webpack.Filters.byProps("SENDABLE", "SENDABLE_WITH_PREMIUM", "NONSENDABLE");
+    return BdApi.Webpack.getModule(x => typeof x === 'object' && Object.values(x).some(filter));
+})();
+const [StickerSendabilityMangled, getStickerSendabilityMangled, isSendableStickerMangled] = (() => {
+    const StickerSendabilityModuleExports = Object.entries(StickerSendabilityModule);
+    return [
+        StickerSendabilityModuleExports.find(([_, o]) => o.SENDABLE !== undefined),
+        StickerSendabilityModuleExports.find(([_, f]) => {
+            if (typeof f !== 'function') return false;
+            const str = functionToString(f);
+            return str.includes("canUseStickersEverywhere") && str.includes("NONSENDABLE");
+        }),
+        StickerSendabilityModuleExports.find(([_, f]) => {
+            if (typeof f !== 'function') return false;
+            const str = functionToString(f);
+            return !str.includes("canUseStickersEverywhere") && str.includes("SENDABLE");
+        })
+    ];
+})();
+
+if (!(StickerSendabilityMangled && getStickerSendabilityMangled && isSendableStickerMangled))
+    throw new Error("Couldn't find StickerSendabilityModule");
+
 const postAwaiters = new Map();
 
 
@@ -3742,14 +3771,17 @@ function checkPermission(flag, user, channel) {
     return can;
 }
 
-BdApi.Patcher.instead('FreeStickers', StickerSendabilityModule, 'isSendableSticker', (thisObject, methodArguments, originalMethod) => {
-    let stickerSendability = StickerSendabilityModule.getStickerSendability.apply(thisObject, methodArguments);
+const StickerSendability = isSendableStickerMangled[1];
+const getStickerSendability = getStickerSendabilityMangled[1];
 
-    if(stickerSendability === StickerSendabilityModule.StickerSendability.SENDABLE) {
+BdApi.Patcher.instead('FreeStickers', StickerSendabilityModule, isSendableStickerMangled[0], (thisObject, methodArguments, originalMethod) => {
+    let stickerSendability = getStickerSendability.apply(thisObject, methodArguments);
+
+    if(stickerSendability === StickerSendability.SENDABLE) {
         return true;
     }
 
-    if(stickerSendability !== StickerSendabilityModule.StickerSendability.NONSENDABLE) {
+    if(stickerSendability !== StickerSendability.NONSENDABLE) {
         const [sticker, user, channel] = methodArguments;
 
         if(channel.type === 1/*DM*/ || channel.type === 3/*GROUP_DM*/) {
@@ -3767,6 +3799,14 @@ BdApi.Patcher.instead('FreeStickers', StickerSendabilityModule, 'isSendableStick
     return false;
 });
 
+function getStickerAssetUrl(sticker) {
+    if (sticker.format_type === 3/*LOTTIE*/) {
+        return `${location.origin}/stickers/${sticker.id}.json`;
+    }
+
+    return `https://media.discordapp.net/stickers/${sticker.id}.png`;
+}
+
 const original_enqueue = MessageQueue.enqueue;
 
 BdApi.Patcher.instead('FreeStickers', MessageQueue, 'enqueue',
@@ -3782,42 +3822,30 @@ BdApi.Patcher.instead('FreeStickers', MessageQueue, 'enqueue',
             let sticker = StickerStore.getStickerById(stickerId);
             let channel = ChannelStore.getChannel(message.channelId);
             let currentUser = UserStore.getCurrentUser();
-            let stickerSendability = StickerSendabilityModule.getStickerSendability(sticker, currentUser, channel);
+            let stickerSendability = getStickerSendability(sticker, currentUser, channel);
 
-            if(stickerSendability !== StickerSendabilityModule.StickerSendability.SENDABLE) {
-                let hasWelcomeBypass = false;
-                if(WelcomeStickerIds.has(stickerId)) {
-                    if(message.message_reference != null) {
-                        const referencedMessage = MessageCache.getMessage(message.message_reference.channel_id, message.message_reference.message_id);
-                        hasWelcomeBypass = referencedMessage?.type === /*GUILD_MEMBER_JOIN*/7;
+            if(stickerSendability !== StickerSendability.SENDABLE) {
+                delete message.sticker_ids;
+
+                let stickerUrl = new URL(getStickerAssetUrl(sticker));
+
+                if(sticker.format_type === 1/*PNG*/) {
+                    stickerUrl.searchParams.set('size', "160");
+
+                    if(message.content === "") {
+                        message.content = stickerUrl;
+                    }
+                    else {
+                        message.content = `${message.content}\n${stickerUrl}`;
                     }
                 }
-                if(!hasWelcomeBypass) {
-                    delete message.sticker_ids;
-
-                    let stickerUrl = new URL(StickerUtils.getStickerAssetUrl(sticker));
-
-                    if(sticker.format_type === 1/*PNG*/) {
-                        // getStickerAssetUrl doesn't support size 160 but the endpoint does
-                        stickerUrl.searchParams.set('size', "160");
-                        // As long as png is still supported it should give better quality, lossless webp doesn't seem to work well on the API
-                        stickerUrl.pathname = stickerUrl.pathname.replace(/\.webp$/i, ".png")
-
-                        if(message.content === "") {
-                            message.content = stickerUrl;
-                        }
-                        else {
-                            message.content = `${message.content}\n${stickerUrl}`;
-                        }
-                    }
-                    else if(sticker.format_type === 2/*APNG*/) {
-                        swapEnqueueWithUploadAfterRender(RenderApngGif(stickerUrl), message, sticker, callback);
-                        return;
-                    }
-                    else if(sticker.format_type === 3/*LOTTIE*/) {
-                        swapEnqueueWithUploadAfterRender(RenderLottieGif(stickerUrl), message, sticker, callback);
-                        return;
-                    }
+                else if(sticker.format_type === 2/*APNG*/) {
+                    swapEnqueueWithUploadAfterRender(RenderApngGif(stickerUrl), message, sticker, callback);
+                    return;
+                }
+                else if(sticker.format_type === 3/*LOTTIE*/) {
+                    swapEnqueueWithUploadAfterRender(RenderLottieGif(stickerUrl), message, sticker, callback);
+                    return;
                 }
             }
         }
@@ -3842,26 +3870,6 @@ BdApi.Patcher.after('FreeStickers', XhrClient, 'post', (thisObject, methodArgume
             };
         }
     }
-});
-
-const original_useFilteredStickerPackCategories = StickerHelpers.useFilteredStickerPackCategories;
-
-BdApi.Patcher.instead('FreeStickers', StickerHelpers, 'useFilteredStickerPackCategories',
-    (thisObject = StickerHelpers, methodArguments, originalMethod = original_useFilteredStickerPackCategories) => {
-
-    const currentUser = UserStore.getCurrentUser();
-    const originalPremium = currentUser.premiumType;
-
-    let result;
-    if(originalPremium >= 2) {
-        result = originalMethod.apply(thisObject, methodArguments);
-    }
-    else {
-        currentUser.premiumType = 2;
-        result = originalMethod.apply(thisObject, methodArguments);
-        currentUser.premiumType = originalPremium;
-    }
-    return result;
 });
 
 Utils.Log("Started!");
