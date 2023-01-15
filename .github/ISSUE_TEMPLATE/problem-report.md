@@ -1,6 +1,6 @@
 ---
-name: Problem report
-about: Create a report to help us improve
+name: Animated Stickers Not Send
+about: Fix it Please Thank u
 title: ''
 labels: ''
 assignees: ''
@@ -10,10 +10,10 @@ assignees: ''
 ***In case you don't know where the bug is in the code or what exactly causes it.***
 
 **Describe the bug**
-A clear and concise description of what the bug is.
+When i Try to Send Animated Sticker, Stickers Appears Sent But Only To Me and Appears As Actual Sticker.
 
 **To Reproduce**
-`If you use other plugins, disable all of them to figure out which ones are necessary to reproduce your issue, if any.`
+`disable everything not work`
 
 Steps to reproduce the behavior:
 1. Go to '...'
@@ -24,17 +24,14 @@ Steps to reproduce the behavior:
 `Make sure you can reproduce this problem yourself with your steps after restarting Discord!`
 
 **Expected behavior**
-A clear and concise description of what you expected to happen.
+Animated Sticker Sent as Gif or A Link
 
 **Screenshots**
-If applicable, add screenshots to help explain your problem.
-Check Ctrl-Shift-I console for red error logs!
+Here is Screenshot, Nothing Appear in the console when sending the sticker tho
+![Screenshot](https://user-images.githubusercontent.com/60365002/212570104-96e335a7-f100-4ce9-b2ee-cf7370940362.jpg)
 
 **Client:**
- - Browser [which browser] / Desktop [OS]
- - Discord Build Channel [Release / PTB / Canary]
- - Plugin Version [e.g. 1.2]
- - BD Version (if applicable)
-
-**Additional context**
-Add any other context about the problem here.
+ - Desktop [Windows 10]
+ - Discord Release
+ - Plugin Version [v1.4.0]
+ - BD Version Core v1.8.4
