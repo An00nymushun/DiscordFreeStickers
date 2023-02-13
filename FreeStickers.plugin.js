@@ -3772,16 +3772,19 @@ function checkPermission(flag, user, channel) {
 }
 
 const StickerSendability = isSendableStickerMangled[1];
+StickerSendability.SENDABLE = 0;
+StickerSendability.NONSENDABLE = 1;
 const getStickerSendability = getStickerSendabilityMangled[1];
 
 BdApi.Patcher.instead('FreeStickers', StickerSendabilityModule, isSendableStickerMangled[0], (thisObject, methodArguments, originalMethod) => {
     let stickerSendability = getStickerSendability.apply(thisObject, methodArguments);
 
     if(stickerSendability === StickerSendability.SENDABLE) {
+        console.log("pp");
         return true;
     }
 
-    if(stickerSendability !== StickerSendability.NONSENDABLE) {
+    if(stickerSendability === StickerSendability.NONSENDABLE) {
         const [sticker, user, channel] = methodArguments;
 
         if(channel.type === 1/*DM*/ || channel.type === 3/*GROUP_DM*/) {
