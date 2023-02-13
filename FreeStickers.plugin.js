@@ -3780,7 +3780,6 @@ BdApi.Patcher.instead('FreeStickers', StickerSendabilityModule, isSendableSticke
     let stickerSendability = getStickerSendability.apply(thisObject, methodArguments);
 
     if(stickerSendability === StickerSendability.SENDABLE) {
-        console.log("pp");
         return true;
     }
 
