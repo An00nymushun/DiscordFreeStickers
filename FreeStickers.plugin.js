@@ -3677,18 +3677,20 @@ function swapEnqueueWithUploadAfterRender(renderPromise, message, sticker, callb
             }
         }
 
-        postAwaiters.set(`/channels/${message.channelId}/messages`, (result) => {
+        /*postAwaiters.set(`/channels/${message.channelId}/messages`, (result) => {
             MessageActions.deleteMessage(message.channelId, message.nonce, true);
             callback(result);
-        });
-        FileUploader.upload({
+        });*/
+        MessageAttachmentManager.addFiles({
+            files: [{
+                file: new File([blob], "sticker.gif"),
+                platform: 1,
+                isThumbnail: false
+            }],
             channelId: message.channelId,
-            file: blob,
-            draftType: 0,
-            message,
-            hasSpoiler: false,
-            filename: `${sticker.name}.gif`
-        });
+            showLargeMessageDialog: false,
+            draftType: 0
+        })
     });
 }
 
@@ -3704,7 +3706,7 @@ function findModules(modules) {
 
 
 const {
-    FileUploader, MessageActions, MessageQueue, MessageDispatcher, MessageCache, ChannelStore, UserStore, StickerStore, XhrClient, PermissionEvaluator
+    FileUploader, MessageActions, MessageQueue, MessageDispatcher, MessageCache, ChannelStore, UserStore, StickerStore, XhrClient, PermissionEvaluator, MessageAttachmentManager
 } = findModules({
     FileUploader: ['upload', 'cancel', 'instantBatchUpload'],
     MessageActions: ['deleteMessage', 'sendClydeError'],
@@ -3715,7 +3717,8 @@ const {
     UserStore: ['getCurrentUser'],
     StickerStore: ['getStickerById'],
     XhrClient: ['post', 'getXHR'],
-    PermissionEvaluator: ['can', 'getHighestRole', 'canEveryone']
+    PermissionEvaluator: ['can', 'getHighestRole', 'canEveryone'],
+    MessageAttachmentManager: ["addFiles"]
 });
 
 const functionToString = (() => {
@@ -3840,6 +3843,7 @@ BdApi.Patcher.instead('FreeStickers', MessageQueue, 'enqueue',
                     }
                 }
                 else if(sticker.format_type === 2/*APNG*/) {
+                    MessageActions.deleteMessage(message.channelId, message.nonce, true);
                     swapEnqueueWithUploadAfterRender(RenderApngGif(stickerUrl), message, sticker, callback);
                     return;
                 }
